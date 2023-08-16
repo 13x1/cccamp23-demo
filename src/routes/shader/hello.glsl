@@ -64,6 +64,7 @@ float GetLight(vec3 p)
 
 void main()
 {
+    gl_FragColor = vec4(u_time,u_resolution,1.0);
     vec2 uv = (gl_PointCoord.xy-.5*u_resolution.xy)/u_resolution.y;
 
     vec3 ro = vec3(0,1,0); // Ray Origin/Camera

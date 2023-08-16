@@ -6,3 +6,5 @@ export const load: LayoutLoad = async ({ data }) => {
         ...(await getI18nStores(data.requestLocale))
     };
 };
+
+export const ssr = false
