@@ -2,9 +2,10 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import autoprefixer from 'autoprefixer';
 import { defineConfig } from 'vitest/config';
 import tailwindcss from 'tailwindcss';
+import glsl from "vite-plugin-glsl"
 
 export default defineConfig({
-    plugins: [sveltekit()],
+    plugins: [glsl(), sveltekit()],
     test: {
         include: ['./src/**/*.test.ts', './src/tests/unit/**/*.ts'],
         exclude: ['./src/tests/e2e/**/*'],
