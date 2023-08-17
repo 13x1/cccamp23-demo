@@ -1,6 +1,7 @@
 <script lang="ts">
     import Box from './Box.svelte';
     import { onMount } from 'svelte';
+    import { fonts, renderLine } from './font/index';
     import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from './runner/run_shader';
     import shaderSrc from "./shader/texture.glsl?raw"
 
@@ -38,9 +39,15 @@
     function s(n: number) {
         return new Promise(r => setTimeout(r, n * 1000))
     }
+
+    let running = true
+
     let started = false
     let debug = false
     async function animateStart() {
+        if (!debug) await document.documentElement.requestFullscreen()
+        document.addEventListener("fullscreenchange", () => {window.close()});
+
         if (started) return
         started = true
         if (!debug) {
@@ -66,13 +73,20 @@
         }
         await s(2);
 
-        let newBoxes = boxes.map((orig, i) => {
-            let x = (i % res[0]) / res[0]
-            let y = Math.floor(i / res[0]) / res[1]
+        let newBoxes = boxes.map((_, i) => {
+            let x = (i % res[0])
+            let y = Math.floor(i / res[0])
 
-            let v = 1 - Math.abs(x - 0.33) - 0.2
+            let xRel = x / res[0]
 
-            return Math.abs(v - y) < 0.1 ? 255 : 0
+            let vRel = 1 - Math.abs(xRel - 0.30) - 0.25
+            let v = Math.floor(vRel * res[0])
+
+            let line = renderLine("CHECKBOXES", fonts.sevenPlus)
+
+            let lineBox = line[Math.floor((y - v) / 4)]?.[Math.floor((x - 5) / 2)]
+
+            return  (lineBox ? 255 : 0)
         })
 
         for (let idx = 0; idx < targetRes[0]; idx++) {
@@ -81,28 +95,40 @@
 
                 boxes[n] = newBoxes[n]
             }
-            await s(0.005)
+            if ((idx - 4) % 12 === 0) await s(0.25)
         }
 
-        await s(2)
+        await s(3)
 
         let shader = initShader(canvas, res, shaderSrc)
-        let x = 1
+        let currentTime = 1
 
         function anim() {
             sendToShader(shader, loc.resolution, ...res)
             sendToShader(shader, loc.boxes, ...res)
-            sendToShader(shader, loc.time, x)
+            sendToShader(shader, loc.time, currentTime)
             // shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
             renderShader(shader)
-            x += 0.01
+            currentTime += 0.01
             let pixels: Uint8Array = getShaderPixels(shader)
             boxes = Array.from(pixels).reverse().filter((_, i) => i % 4 === 1)
-            requestAnimationFrame(anim)
+            if (running) requestAnimationFrame(anim)
         }
 
         anim()
 
+    }
+
+    let text = "I agree to the terms and conditions, the privacy policy," +
+        " and the cookie policy. I also agree to receive updates from the" +
+        " daily newsletter with advertising, and agree to sacrifice my firstborn" +
+        " child, and sell my soul to the authors of this demo. I also forfeit all" +
+        " of my mortal possessions, and agree to"
+
+    let keyHandler = (e: KeyboardEvent) => {
+        if (e.key === "r") {
+            location.reload()
+        }
     }
 
 </script>
@@ -127,12 +153,31 @@
 
 </div>
 
+<label style="
+    position: absolute;
+    left: 950px;
+    width: 700px;
+    height: 780px;
+    top: 130px;
+    font-size: 50px;
+    /* gradient */
+    background: linear-gradient(180deg, black 0%, black 70%, transparent 95%, transparent 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+" for="checkbox">
+    {text}
+</label>
 
 <canvas id="canvas" style="opacity: 0" width={res[0]} height={res[1]} bind:this={canvas}></canvas>
 
 <style global>
-    html, body, :root {
+    body {
         overflow: hidden;
         height: 100%;
+        margin: 40px 40px;
+        background: #fff;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", Segoe UI Symbol, "Noto Color Emoji";
     }
 </style>
+
+<svelte:window on:keydown={keyHandler}></svelte:window>

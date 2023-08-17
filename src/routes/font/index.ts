@@ -22,7 +22,7 @@ export interface RenderOptions {
     scale?: number;
 }
 
-import sevenPlus from './data/seven-plus.json?raw';
+import sevenPlus from './seven-plus.json?raw';
 
 export const fonts = {
     sevenPlus: JSON.parse(sevenPlus) as Font,
@@ -42,7 +42,7 @@ const areTouching = (first: Pixel[][], second: Pixel[][]) => {
     }
 }
 
-const renderLine = (text: string, font: Font) => {
+export const renderLine = (text: string, font: Font): number[][] => {
     const letters = text.split("");
     const characters = [];
     let maxHeight = 0;
@@ -82,4 +82,5 @@ export function renderPixels(text: string, font: Font): Array<Pixel[]> {
     return [].concat(...lines);
 }
 
+export default {}
 
