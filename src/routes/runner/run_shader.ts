@@ -1,21 +1,23 @@
+// Not Null assert
 function n<T>(x: T, msg?: string): asserts x is NonNullable<T> {
     if (x === undefined || x === null) throw new Error(msg ?? "Null check failed!");
 }
+
+// Log if log is there
 function logIf(msg: string | null | undefined) {
     if (msg && msg.length > 0) console.log("log:\n"+msg)
 }
 
-// eslint-disable-next-line
-const T = null as any
-
 export type Resolution = [width: number, height: number]
 
-export type UniformTypes = `${1|2|3|4}${'f'|'i'}`
-
+// Skip first entry of tuple/array
 type Skip1<T extends Array<unknown>> = T extends [unknown, ...infer U] ? U : never;
 
+export type UniformTypes = `${1|2|3|4}${'f'|'i'}`
+// Looks up parameter types for a uniform
 export type UniformTuple<T extends UniformTypes> = Skip1<Parameters<WebGLRenderingContextBase[`uniform${T}`]>>
 
+// Send data to shader
 export function sendToShader<T extends UniformTypes>(
     shader: Shader,
     [name, uniform]: readonly [name: string, uniform: T],
@@ -33,6 +35,7 @@ export function sendToShader<T extends UniformTypes>(
     )
 }
 
+// Get all pixels from shader
 export function getShaderPixels(shader: Shader): Uint8Array {
     const pixels = new Uint8Array(
         shader.gl.drawingBufferWidth * shader.gl.drawingBufferHeight * 4,
@@ -49,14 +52,6 @@ export function getShaderPixels(shader: Shader): Uint8Array {
     return pixels
 }
 
-// const locations = {
-//     time: ["u_time", "1f"],
-//     resolution: ["u_resolution", "2f"],
-// } as const
-//
-// sendToShader(T, locations.resolution, 1, 1);
-// sendToShader(T, locations.time, 1);
-
 export interface Shader {
     cv: HTMLCanvasElement
     gl: WebGLRenderingContext,
@@ -66,21 +61,13 @@ export interface Shader {
     cache: Record<string, WebGLUniformLocation | null>,
 }
 
+// Initialize shader
 export function initShader(cv: HTMLCanvasElement, res: Resolution, glsl: string) {
     const gl = cv.getContext("webgl"); n(gl)
 
+    // Simple vertex shader
     const vertexShader = gl.createShader(gl.VERTEX_SHADER); n(vertexShader)
-    // gl.shaderSource(vertexShader, `
-    //     #version 100
-    //     precision highp float;
-    //
-    //     attribute vec2 position;
-    //
-    //     void main() {
-    //         gl_Position = vec4(position, 0.0, 1.0);
-    //         gl_PointSize = ${(Math.max(...res)).toFixed(5)};
-    //     }
-    // `)
+    // See below
     gl.shaderSource(vertexShader, `
     attribute vec4 a_position;
 
@@ -92,12 +79,14 @@ export function initShader(cv: HTMLCanvasElement, res: Resolution, glsl: string)
 
     logIf(gl.getShaderInfoLog(vertexShader))
 
+    // Custom fragment shader
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER); n(fragmentShader)
     gl.shaderSource(fragmentShader, glsl)
     gl.compileShader(fragmentShader)
 
     logIf(gl.getShaderInfoLog(fragmentShader))
 
+    // Link shaders
     const program = gl.createProgram(); n(program)
     gl.attachShader(program, vertexShader)
     gl.attachShader(program, fragmentShader)
@@ -109,22 +98,27 @@ export function initShader(cv: HTMLCanvasElement, res: Resolution, glsl: string)
     return { cv, gl, vertexShader, fragmentShader, program, cache: {} } as Shader
 }
 
+// Render shader to canvas
 export function renderShader({gl, program}: Shader) {
-    // Specify vertex data and draw
+    // Big triangle covering the screen
     const vertices = new Float32Array([
         -5.0, -5.0,
         5.0, -5.0,
         0.0, 5.0
     ]);
 
+    // Buffer for the triangle
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
+    // Setting the position
+    // Why not hardcoded? Because I don't know how and an OpenGL wizard told me that its better this way
     const positionAttribLocation = gl.getAttribLocation(program, "a_position");
     gl.enableVertexAttribArray(positionAttribLocation);
     gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
+// Fix Svelte LSP having a stroke
 export default {}
