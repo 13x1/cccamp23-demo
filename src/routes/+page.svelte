@@ -174,7 +174,7 @@
     body {
         overflow: hidden;
         height: 100%;
-        margin: 40px 40px;
+        margin: 40px !important;
         background: #fff;
         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", Segoe UI Symbol, "Noto Color Emoji";
     }
