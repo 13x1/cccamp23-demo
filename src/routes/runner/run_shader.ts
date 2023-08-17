@@ -23,7 +23,6 @@ export function sendToShader<T extends UniformTypes>(
 {
     const loc = shader.cache[name] ??= shader.gl.getUniformLocation(shader.program, name)
     if (!loc) {
-        console.log(`Uniform ${name} (${uniform}) not found, skipping...`)
         return;
     }
     shader.gl[`uniform${uniform}`](
@@ -71,16 +70,23 @@ export function initShader(cv: HTMLCanvasElement, res: Resolution, glsl: string)
     const gl = cv.getContext("webgl"); n(gl)
 
     const vertexShader = gl.createShader(gl.VERTEX_SHADER); n(vertexShader)
+    // gl.shaderSource(vertexShader, `
+    //     #version 100
+    //     precision highp float;
+    //
+    //     attribute vec2 position;
+    //
+    //     void main() {
+    //         gl_Position = vec4(position, 0.0, 1.0);
+    //         gl_PointSize = ${(Math.max(...res)).toFixed(5)};
+    //     }
+    // `)
     gl.shaderSource(vertexShader, `
-        #version 100
-        precision highp float;
+    attribute vec4 a_position;
 
-        attribute vec2 position;
-
-        void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
-            gl_PointSize = ${(Math.max(...res)).toFixed(5)};
-        }
+    void main() {
+        gl_Position = vec4(a_position.xy, 0.0, 1.0);
+    }
     `)
     gl.compileShader(vertexShader)
 
@@ -101,6 +107,24 @@ export function initShader(cv: HTMLCanvasElement, res: Resolution, glsl: string)
     logIf(gl.getProgramInfoLog(program))
 
     return { cv, gl, vertexShader, fragmentShader, program, cache: {} } as Shader
+}
+
+export function renderShader({gl, program}: Shader) {
+    // Specify vertex data and draw
+    const vertices = new Float32Array([
+        -5.0, -5.0,
+        5.0, -5.0,
+        0.0, 5.0
+    ]);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    const positionAttribLocation = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(positionAttribLocation);
+    gl.vertexAttribPointer(positionAttribLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 export default {}

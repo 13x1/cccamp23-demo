@@ -1,8 +1,8 @@
 <script lang="ts">
     import Box from './Box.svelte';
     import { onMount } from 'svelte';
-    import { getShaderPixels, initShader, type Resolution, sendToShader } from '../runner/run_shader';
-    import shaderSrc from "../shader/hello.glsl?raw"
+    import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from '../runner/run_shader';
+    import shaderSrc from "../shader/texture.glsl?raw"
 
     const res: Resolution = [128, 128]
 
@@ -20,9 +20,10 @@
         let shader = initShader(canvas, res, shaderSrc)
         let x = 1
         function anim() {
-            sendToShader(shader, loc.resolution, 1, x)
+            sendToShader(shader, loc.resolution, ...res)
             sendToShader(shader, loc.boxes, ...res)
-            shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
+            // shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
+            renderShader(shader)
             x -= 0.01
             if (x < 0.5) x = 1
             let pixels: Uint8Array = getShaderPixels(shader)
