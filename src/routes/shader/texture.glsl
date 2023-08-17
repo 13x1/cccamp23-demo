@@ -15,6 +15,7 @@ float GetDist(vec3 p)
 {
     vec4 s = vec4(0, 1, 6, 1);//Sphere xyz is position w is radius
     float sphereDist = length(p-s.xyz) - s.w;
+    float sphereDist2 = length(p-s.xyz) - s.w;
     float planeDist  = p.y;
     float d = min(sphereDist, planeDist);
     return d;
@@ -144,7 +145,7 @@ void main()
 {
     gl_FragColor = vec4(gl_FragCoord.xy/u_checkboxes, 1.0, 1.0);
 
-    vec2 uv = (((gl_FragCoord.xy)-.5*u_resolution.xy)/u_resolution.x) * -1. * .5;
+    vec2 uv = (((gl_FragCoord.xy)-.5*u_resolution.xy)/u_resolution.x) * .5;
 
     vec3 ro = vec3(0, 1, 0);// Ray Origin/Camera
     vec3 rd = normalize(vec3(uv.x, uv.y, 1));// Ray Direction

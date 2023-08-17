@@ -22,6 +22,7 @@
         function anim() {
             sendToShader(shader, loc.resolution, ...res)
             sendToShader(shader, loc.boxes, ...res)
+            sendToShader(shader, loc.time, x)
             // shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
             renderShader(shader)
             x -= 0.01
