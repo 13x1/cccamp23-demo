@@ -1,84 +1,138 @@
 <script lang="ts">
+    import Box from './Box.svelte';
     import { onMount } from 'svelte';
-    import * as png from '@stevebel/png/src';
+    import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from './runner/run_shader';
+    import shaderSrc from "./shader/texture.glsl?raw"
 
-    import shader from './shader/hello.glsl?raw'
+    let targetRes: Resolution = [128, 128]
+    let res: Resolution = [1, 1]
+    let scale = targetRes[0] / res[0]
 
-    const size = 32
+    let canvas: HTMLCanvasElement;
 
-    let url: string | null = null;
+    const loc = {
+        time: ["u_time", "1f"],
+        resolution: ["u_resolution", "2f"],
+        boxes: ["u_checkboxes", "2f"]
+    } as const
 
-    let boxes: Array<boolean> = []
+    let boxes: number[] = Array(res[0] * res[1]).fill(0).map(() => 255)
 
-    let canvas: HTMLCanvasElement
+    onMount(() => {
+        if (Math.random() > 0) return
 
-    function renderGl(glslShader: string, x: number, y: number) {
-        // load vertex shader
-        let gl = canvas.getContext("webgl")!
+    })
 
-        // vertex shader
-        let vertexShader = gl.createShader(gl.VERTEX_SHADER)!
-        gl.shaderSource(vertexShader, `
-        #version 100
-        precision highp float;
-
-        attribute vec2 position;
-
-        void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
-            gl_PointSize = ${(size).toFixed(1)};
+    function trans(cb: () => void) {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if (document.startViewTransition) {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            document.startViewTransition(cb)
+        } else {
+            cb()
         }
-        `)
-        gl.compileShader(vertexShader)
-
-        // fragment shader
-        let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!
-        gl.shaderSource(fragmentShader, glslShader)
-        gl.compileShader(fragmentShader)
-
-        // link shaders to create our program
-        let program = gl.createProgram()!
-        gl.attachShader(program, vertexShader)
-        gl.attachShader(program, fragmentShader)
-        gl.linkProgram(program)
-        gl.useProgram(program)
-
-        gl.uniform1f(gl.getUniformLocation(program, 'u_time'), 0.5);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), x, y);
-
-        // render to canvas
-        gl.drawArrays(gl.POINTS, 0, 1)
-
-        console.log(url)
-        canvas.toBlob(async b => { try {
-            let img = png.decode(await b!.arrayBuffer())
-            boxes = img.data.filter((_, i) => i % 4 === 1).map(e => e < 50)
-        } catch(e) {
-            console.log(e)
-        }}, 'image/png')
-
-        console.log("log:", gl.getShaderInfoLog(fragmentShader))
     }
 
-    let x: number = 1;
-    let y: number = 1;
+    function s(n: number) {
+        return new Promise(r => setTimeout(r, n * 1000))
+    }
+    let started = false
+    let debug = false
+    async function animateStart() {
+        if (started) return
+        started = true
+        if (!debug) {
+            do {
+                await s(1)
+                scale /= 2;
+                await s(1)
+                trans(() => {
+                    res = [res[0] * 2, res[1] * 2]
+                    boxes = Array(res[0] * res[1]).fill(0).map((_, i) => {
+                        return (i < res[0] * res[1] / 2) && (i % res[0] < res[0] / 2) ? 0 : 255
+                    })
+                })
+                await s(1)
+                trans(() => {
+                    boxes = boxes.map(() => 0)
+                })
+            } while (res[0] < targetRes[0])
+        } else {
+            scale = 1
+            res = [...targetRes]
+            boxes = Array(res[0] * res[1]).fill(0).map(() => 0)
+        }
+        await s(2);
 
-    $: loaded && renderGl(shader, x, y)
-    let loaded = false;
-    onMount(() => loaded = true)
+        let newBoxes = boxes.map((orig, i) => {
+            let x = (i % res[0]) / res[0]
+            let y = Math.floor(i / res[0]) / res[1]
 
+            let v = 1 - Math.abs(x - 0.33) - 0.2
+
+            return Math.abs(v - y) < 0.1 ? 255 : 0
+        })
+
+        for (let idx = 0; idx < targetRes[0]; idx++) {
+            for (let idy = 0; idy < targetRes[1]; idy++) {
+                let n = idx + idy * targetRes[0]
+
+                boxes[n] = newBoxes[n]
+            }
+            await s(0.005)
+        }
+
+        await s(2)
+
+        let shader = initShader(canvas, res, shaderSrc)
+        let x = 1
+
+        function anim() {
+            sendToShader(shader, loc.resolution, ...res)
+            sendToShader(shader, loc.boxes, ...res)
+            sendToShader(shader, loc.time, x)
+            // shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
+            renderShader(shader)
+            x += 0.01
+            let pixels: Uint8Array = getShaderPixels(shader)
+            boxes = Array.from(pixels).reverse().filter((_, i) => i % 4 === 1)
+            requestAnimationFrame(anim)
+        }
+
+        anim()
+
+    }
 
 </script>
 
-<canvas bind:this={canvas} width={size} height={size} style="border: 2px solid black">
+<div style="
+">
 
-</canvas>
+<div class="inline-grid" style="
+    transform-origin: top left;
+    transform: scale({scale/2});
+    position: absolute;
 
-x <input type="range" min="-2" max="2" step="0.1" bind:value={x}> {x}<br>
-y <input type="range" min="-2" max="2" step="0.1" bind:value={y}> {y}
-<br>
-<div style="transform: rotate(180deg); line-height: 80%">
-{#each boxes as box}
-    <input type="checkbox" checked={!box}>
-{/each}
+    {debug ? '' : 'transition: transform 1s;'}
+
+    grid-template-rows: repeat({res[0]}, 1fr);
+    grid-template-columns: repeat({res[1]}, 1fr);
+" on:click={animateStart} on:keydown={() => void 0}>
+    {#each boxes as box}
+        <Box value={box}/>
+    {/each}
 </div>
+
+</div>
+
+
+<canvas id="canvas" style="opacity: 0" width={res[0]} height={res[1]} bind:this={canvas}></canvas>
+
+<style global>
+    html, body, :root {
+        overflow: hidden;
+        height: 100%;
+    }
+</style>

@@ -1,5 +1,5 @@
 import preprocess from 'svelte-preprocess';
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-static';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 // noinspection JSValidateTypes
@@ -18,7 +18,7 @@ const config = {
         env: {
             privatePrefix: 'PRIVATE_',
             publicPrefix: 'PUBLIC_'
-        }
+        },
     }
 };
 

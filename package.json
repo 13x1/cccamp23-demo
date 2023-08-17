@@ -48,7 +48,9 @@
     "type": "module",
     "dependencies": {
         "@stevebel/png": "^1.5.1",
+        "@sveltejs/adapter-static": "^2.0.3",
         "jimp": "^0.22.10",
+        "js-pixel-fonts": "^1.6.0",
         "typesafe-i18n": "^5.25.1",
         "vite-plugin-glsl": "^1.1.2",
         "vite-plugin-node-polyfills": "^0.11.1"
