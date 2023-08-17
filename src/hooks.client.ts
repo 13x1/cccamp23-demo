@@ -7,6 +7,7 @@ const errToStr = (err: unknown) => (err instanceof Error ? err.message : JSON.st
 // Loading/rendering error handling
 
 export const handleError = (async ({ error }) => {
+    console.error(error)
     return {
         message: 'Whoops! Something went wrong: ' + errToStr(error)
     };
