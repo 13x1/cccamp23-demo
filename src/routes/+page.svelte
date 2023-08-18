@@ -1,6 +1,5 @@
 <script lang="ts">
     import Box from './Box.svelte';
-    import { onMount } from 'svelte';
     import { fonts, renderLine } from './font/index';
     import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from './runner/run_shader';
     import shaderSrc from "./shader/texture.glsl?raw"
@@ -18,11 +17,6 @@
     } as const
 
     let boxes: number[] = Array(res[0] * res[1]).fill(0).map(() => 255)
-
-    onMount(() => {
-        if (Math.random() > 0) return
-
-    })
 
     function trans(cb: () => void) {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -45,9 +39,11 @@
     let started = false
     let debug = false
     async function animateStart() {
-        if (!debug) await document.documentElement.requestFullscreen()
-        document.addEventListener("fullscreenchange", () => {window.close()});
-
+        if (!debug) {
+            await document.documentElement.requestFullscreen();
+            await s(2)
+            document.addEventListener('fullscreenchange', () => {location.reload();});
+        }
         if (started) return
         started = true
         if (!debug) {
