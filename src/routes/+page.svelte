@@ -2,7 +2,7 @@
     import Box from './Box.svelte';
     import { fonts, renderLine } from './font/index';
     import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from './runner/run_shader';
-    import shaderSrc from "./shader/texture.glsl?raw"
+    import shaderSrc from "./shader/hello.glsl?raw"
 
     let targetRes: Resolution = [128, 128]
     let res: Resolution = [1, 1]
@@ -37,7 +37,7 @@
     let running = true
 
     let started = false
-    let debug = false
+    let debug = true 
     async function animateStart() {
         if (!debug) {
             await document.documentElement.requestFullscreen();
@@ -85,14 +85,14 @@
             return  (lineBox ? 255 : 0)
         })
 
-        for (let idx = 0; idx < targetRes[0]; idx++) {
-            for (let idy = 0; idy < targetRes[1]; idy++) {
-                let n = idx + idy * targetRes[0]
+        //for (let idx = 0; idx < targetRes[0]; idx++) {
+        //    for (let idy = 0; idy < targetRes[1]; idy++) {
+        //        let n = idx + idy * targetRes[0]
 
-                boxes[n] = newBoxes[n]
-            }
-            if ((idx - 4) % 12 === 0) await s(0.25)
-        }
+        //        boxes[n] = newBoxes[n]
+        //    }
+        //    if ((idx - 4) % 12 === 0) await s(0.25)
+        //}
 
         await s(3)
 
