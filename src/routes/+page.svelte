@@ -2,13 +2,21 @@
     import Box from './Box.svelte';
     import { fonts, renderLine } from './font/index';
     import { getShaderPixels, initShader, renderShader, type Resolution, sendToShader } from './runner/run_shader';
-    import shaderSrc from "./shader/hello.glsl?raw"
+    import shaderSrc1 from "./shader/hello.glsl?raw"
+    import shaderSrc2 from "./shader/texture.glsl?raw"
+
+    let paused = true;
+
+
 
     let targetRes: Resolution = [128, 128]
     let res: Resolution = [1, 1]
     let scale = targetRes[0] / res[0]
 
-    let canvas: HTMLCanvasElement;
+    let canvas1: HTMLCanvasElement;
+    let canvas2: HTMLCanvasElement;
+
+    let hasTransisioned = false;
 
     const loc = {
         time: ["u_time", "1f"],
@@ -33,11 +41,44 @@
     function s(n: number) {
         return new Promise(r => setTimeout(r, n * 1000))
     }
+    function af() { return new Promise(r => requestAnimationFrame(r)) }
 
     let running = true
 
+    let line = renderLine("CHECKBOXES - presented by :3 maf1a", fonts.sevenPlus)
+
+    let calls = 0
+
+    let scroller_start = performance.now()
+    let scroller_precomputed = Array(line[0].length + targetRes[0]).fill(0).map((_, of) => {
+        let res = targetRes;
+        of *= 1.5
+        return Array(res[0]*res[1]).fill(0).map((_, i) => {
+            calls++
+
+            let x = (i % res[0])
+            let y = Math.floor(i / res[0])
+
+            let xRel = x / res[0]
+
+            let vRel = 1 - Math.abs(xRel - 0.30) - 0.30
+
+            if (Math.abs(vRel - y / res[1]) > 0.3) return 0
+
+            let v = Math.floor(vRel * res[0])
+
+            let lineBox = line[Math.floor((y - v) / 4)]?.[Math.floor((x - 5 + of) / 2)]
+
+            return (lineBox ? 255 : 0)
+        })
+    })
+    console.log("precomputed", performance.now() - scroller_start)
+
+    let startTime = performance.now()
+    let currentTime = performance.now()
+
     let started = false
-    let debug = true 
+    let debug = false
     async function animateStart() {
         if (!debug) {
             await document.documentElement.requestFullscreen();
@@ -75,7 +116,7 @@
 
             let xRel = x / res[0]
 
-            let vRel = 1 - Math.abs(xRel - 0.30) - 0.25
+            let vRel = 1 - Math.abs(xRel - 0.30) - 0.30
             let v = Math.floor(vRel * res[0])
 
             let line = renderLine("CHECKBOXES", fonts.sevenPlus)
@@ -85,29 +126,111 @@
             return  (lineBox ? 255 : 0)
         })
 
-        //for (let idx = 0; idx < targetRes[0]; idx++) {
-        //    for (let idy = 0; idy < targetRes[1]; idy++) {
-        //        let n = idx + idy * targetRes[0]
+        if (!debug) for (let idx = 0; idx < targetRes[0]; idx++) {
+            for (let idy = 0; idy < targetRes[1]; idy++) {
+                let n = idx + idy * targetRes[0]
 
-        //        boxes[n] = newBoxes[n]
-        //    }
-        //    if ((idx - 4) % 12 === 0) await s(0.25)
-        //}
+                boxes[n] = newBoxes[n]
+            }
+            if ((idx - 4) % 12 === 0) await s(0.25)
+        }
 
-        await s(3)
+        await s(0.5)
 
-        let shader = initShader(canvas, res, shaderSrc)
-        let currentTime = 1
+        // for (let of = 0; of < res[0] + line[0].length + 100; of++) {
+        //     boxes = boxes.map((_, i) => {
+        //         let x = (i % res[0])
+        //         let y = Math.floor(i / res[0])
+        //
+        //         let xRel = x / res[0]
+        //
+        //         let vRel = 1 - Math.abs(xRel - 0.30) - 0.25
+        //
+        //         if (Math.abs(vRel - y / res[1]) > 0.3) return 0
+        //
+        //         let v = Math.floor(vRel * res[0])
+        //
+        //         let lineBox = line[Math.floor((y - v) / 4)]?.[Math.floor((x - 5 + of) / 2)]
+        //
+        //         return (lineBox ? 255 : 0)
+        //     })
+        //
+        //     await s(0.02)
+        // }
 
-        function anim() {
-            sendToShader(shader, loc.resolution, ...res)
-            sendToShader(shader, loc.boxes, ...res)
-            sendToShader(shader, loc.time, currentTime)
+        if (!debug) for (let img of scroller_precomputed) {
+            boxes = img
+            await af()
+        }
+
+        if (!debug) await s(1.5)
+
+        let shader1 = initShader(canvas1, res, shaderSrc1)
+        let shader2 = initShader(canvas2, res, shaderSrc2)
+
+        let timeConst = 0.00025
+
+        paused = false
+        startTime = performance.now()
+
+        if (!debug) for (let of = 0; of < res[0] * 2; of++) {
+            sendToShader(shader1, loc.resolution, ...res)
+            sendToShader(shader1, loc.time, (currentTime-startTime) * timeConst)
+            renderShader(shader1)
+            let pixels: Uint8Array = getShaderPixels(shader1)
+            boxes = Array.from(pixels).reverse().filter((_, i) => i % 4 === 1).map((orig, i) => {
+                let x = (i % res[0])
+                let y = Math.floor(i / res[0])
+
+                let xRel = x / res[0]
+
+                let vRel = 1 - Math.abs(xRel * 1.001 - 0.30) - 0.30
+
+                // trial and success
+                if (Math.abs(vRel - y / res[1]) > (of / res[0])) return 0
+                if (Math.abs(vRel - y / res[1]) > (of / res[0]) - 0.25) return 255
+                return orig
+            })
+
+            currentTime = performance.now()
+            await af()
+        }
+
+        // let slidingBanner = renderLine(" CHECKBOXES ", fonts.sevenPlus)
+        // slidingBanner.push(slidingBanner[0].map(() => 0))
+        //
+        // boxes = boxes.map((orig, i) => {
+        //     let x = (i % res[0])
+        //     let y = Math.floor(i / res[0])
+        //
+        //     return slidingBanner[y % slidingBanner.length][x % slidingBanner[0].length] ? 255 : 0
+        //
+        //     return orig
+        // })
+        //
+        // await s(10000)
+
+
+
+        async function anim() {
+            sendToShader(shader1, loc.resolution, ...res)
+            sendToShader(shader1, loc.time, (currentTime - startTime) * timeConst)
             // shader.gl.drawArrays(shader.gl.POINTS, 0, 1)
-            renderShader(shader)
-            currentTime += 0.01
-            let pixels: Uint8Array = getShaderPixels(shader)
+            renderShader(shader1)
+            currentTime = performance.now()
+            let pixels: Uint8Array = getShaderPixels(shader1)
             boxes = Array.from(pixels).reverse().filter((_, i) => i % 4 === 1)
+
+//            if (currentTime - startTime > 24500) {
+            if (currentTime - startTime > 16000 && !hasTransisioned) {
+                console.log("here")
+                hasTransisioned = true
+                startTime = performance.now()
+                shader1 = shader2
+            } else {
+
+            }
+
             if (running) requestAnimationFrame(anim)
         }
 
@@ -164,7 +287,23 @@
     {text}
 </label>
 
-<canvas id="canvas" style="opacity: 0" width={res[0]} height={res[1]} bind:this={canvas}></canvas>
+<canvas id="canvas" style="
+    opacity: {debug ? 1 : 0};
+    position: absolute;
+    left: 0;
+    top: 874px;
+    transform: rotateY(180deg);
+" width={res[0]} height={res[1]} bind:this={canvas1}></canvas>
+
+<canvas id="canvas" style="
+    opacity: {debug ? 1 : 0};
+    position: absolute;
+    left: {res[0] + 10}px;
+    top: 874px;
+    transform: rotateY(180deg);
+" width={res[0]} height={res[1]} bind:this={canvas2}></canvas>
+
+<audio src="/Blackout_BGM.flac" bind:paused />
 
 <style global>
     body {

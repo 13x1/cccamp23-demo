@@ -147,7 +147,7 @@ void main()
 
     vec2 uv = (((gl_FragCoord.xy)-.5*u_resolution.xy)/u_resolution.x) * .5;
 
-    vec3 ro = vec3(0, 1, 0);// Ray Origin/Camera
+    vec3 ro = vec3(0., 1.+pow(2., -(u_time*10.0)+12.0), 0.);// Ray Origin/Camera
     vec3 rd = normalize(vec3(uv.x, uv.y, 1));// Ray Direction
 
     float d = rm(ro, rd);// Distance
